@@ -1,0 +1,31 @@
+-- 로컬(H2) 개발용 샘플 데이터. 실제 데이터는 POST /api/admin/sync 로 공공데이터에서 받아온다.
+-- 좌표/요금은 테스트용 근사값입니다.
+INSERT INTO parking_lot (management_no, name, region, category, lot_type, road_address, jibun_address, total_spaces,
+                         operating_days, weekday_open, weekday_close, saturday_open, saturday_close, holiday_open, holiday_close,
+                         fee_type, basic_time, basic_charge, additional_unit_time, additional_unit_charge, day_pass_charge, month_pass_charge,
+                         payment_methods, notes, managing_agency, phone_number, latitude, longitude, reference_date, synced_at)
+VALUES
+('SAMPLE-0001', '천안종합터미널 공영주차장', 'CHEONAN', 'PUBLIC', '노외', '충청남도 천안시 동남구 신부동 354-1', NULL, 320,
+ '평일+토요일+공휴일', '00:00', '23:59', '00:00', '23:59', '00:00', '23:59',
+ 'PAID', 30, 1000, 10, 300, 10000, 80000, '카드, 현금', NULL, '천안시청', '041-000-0001', 36.8195, 127.1565, '2026-10-01', CURRENT_TIMESTAMP),
+('SAMPLE-0002', '천안역 서부광장 공영주차장', 'CHEONAN', 'PUBLIC', '노외', '충청남도 천안시 동남구 대흥로 239', NULL, 150,
+ '평일+토요일+공휴일', '07:00', '22:00', '07:00', '22:00', '09:00', '18:00',
+ 'PAID', 30, 600, 10, 200, 6000, 50000, '카드', NULL, '천안시청', '041-000-0002', 36.8100, 127.1460, '2026-10-01', CURRENT_TIMESTAMP),
+('SAMPLE-0003', '신부동 노상주차장', 'CHEONAN', 'PUBLIC', '노상', '충청남도 천안시 동남구 신부동 460', NULL, 40,
+ '평일+토요일', '09:00', '20:00', '09:00', '18:00', NULL, NULL,
+ 'FREE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2시간 이내 무료', '천안시청', '041-000-0003', 36.8180, 127.1540, '2026-10-01', CURRENT_TIMESTAMP),
+('SAMPLE-0004', '온양온천역 공영주차장', 'ASAN', 'PUBLIC', '노외', '충청남도 아산시 온천대로 1496', NULL, 210,
+ '평일+토요일+공휴일', '00:00', '23:59', '00:00', '23:59', '00:00', '23:59',
+ 'PAID', 30, 500, 10, 200, 5000, 40000, '카드, 현금', NULL, '아산시청', '041-000-0004', 36.7808, 127.0035, '2026-10-01', CURRENT_TIMESTAMP),
+('SAMPLE-0005', '공산성 주차장', 'GONGJU', 'PUBLIC', '노외', '충청남도 공주시 웅진로 280', NULL, 120,
+ '평일+토요일+공휴일', '09:00', '18:00', '09:00', '18:00', '09:00', '18:00',
+ 'FREE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, '관광객 무료', '공주시청', '041-000-0005', 36.4627, 127.1260, '2026-10-01', CURRENT_TIMESTAMP),
+('SAMPLE-0006', '대천해수욕장 제1주차장', 'BORYEONG', 'PUBLIC', '노외', '충청남도 보령시 신흑동 2258', NULL, 500,
+ '평일+토요일+공휴일', '00:00', '23:59', '00:00', '23:59', '00:00', '23:59',
+ 'MIXED', 60, 2000, 30, 1000, 10000, NULL, '카드', '하절기 유료', '보령시청', '041-000-0006', 36.3076, 126.5150, '2026-10-01', CURRENT_TIMESTAMP),
+('SAMPLE-0007', '홍성역 민영주차장', 'HONGSEONG', 'PRIVATE', '노외', '충청남도 홍성군 홍성읍 홍성역로 1', NULL, 60,
+ '평일+토요일', '08:00', '21:00', '08:00', '21:00', NULL, NULL,
+ 'PAID', 60, 1500, 30, 500, 8000, NULL, '카드', NULL, '(주)샘플파킹', '041-000-0007', 36.5946, 126.6610, '2026-10-01', CURRENT_TIMESTAMP),
+('SAMPLE-0008', '서산시청 부설주차장', 'SEOSAN', 'PUBLIC', '부설', '충청남도 서산시 관아문길 1', NULL, 180,
+ '평일', '09:00', '18:00', NULL, NULL, NULL, NULL,
+ 'FREE', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '서산시청', '041-000-0008', 36.7848, 126.4503, '2026-10-01', CURRENT_TIMESTAMP);

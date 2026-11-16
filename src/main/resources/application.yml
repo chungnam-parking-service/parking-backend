@@ -1,0 +1,102 @@
+spring:
+  application:
+    name: chungnam-parking-backend
+  profiles:
+    active: local
+
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+
+server:
+  port: 8080
+
+# 공공데이터포털 "전국주차장정보표준데이터" OpenAPI
+# https://www.data.go.kr/data/15012896/standard.do 에서 활용신청 후 인증키(Decoding)를 넣으세요.
+public-data:
+  parking:
+    base-url: https://api.data.go.kr/openapi/tn_pubr_prkplce_info_api
+    service-key: ${PUBLIC_DATA_SERVICE_KEY:}
+    page-size: 1000
+    # 매일 새벽 4시에 충남 데이터 동기화
+    sync-cron: "0 0 4 * * *"
+    sync-enabled: false
+
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:5173
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method   # GET, POST 순 정렬
+    tags-sorter: alpha
+  default-produces-media-type: application/json
+
+# POST /api/admin/sync 호출 시 X-Admin-Key 헤더 값
+admin:
+  api-key: ${ADMIN_API_KEY:}
+
+---
+# 로컬 개발: H2 인메모리 DB + 샘플 데이터
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:h2:mem:parking;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+    defer-datasource-initialization: true
+  sql:
+    init:
+      mode: always
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+---
+# 로컬 MySQL 개발: 데이터가 서버 재시작 후에도 유지됨
+# 실행 시 환경변수 SPRING_PROFILES_ACTIVE=mysql, DB_USERNAME, DB_PASSWORD 필요
+spring:
+  config:
+    activate:
+      on-profile: mysql
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:chungnam_parking}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update   # 엔티티 기준으로 테이블 자동 생성/컬럼 추가 (데이터는 유지)
+  sql:
+    init:
+      mode: never        # 샘플 데이터(data.sql) 넣지 않음
+
+---
+# 운영: MySQL
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:chungnam_parking}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  sql:
+    init:
+      mode: never
+
+public-data:
+  parking:
+    sync-enabled: true
