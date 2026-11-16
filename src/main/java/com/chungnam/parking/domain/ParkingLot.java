@@ -86,6 +86,34 @@ public class ParkingLot {
     @Column(nullable = false)
     private LocalDateTime syncedAt;
 
+    // ===== 목적지 주차 안내용 (직접 등록/보완 정보) =====
+
+    /** 데이터 출처. null 이면 공공데이터 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lot_source", length = 20)
+    private LotSource source;
+
+    /** 실제 입구 좌표 (주차장 대표 좌표와 다를 수 있음) */
+    private Double entranceLatitude;
+    private Double entranceLongitude;
+
+    @Column(length = 500)
+    private String entrancePhotoUrl;
+
+    @Column(length = 500)
+    private String entranceGuide;
+
+    /** 직접 입력한 요금 안내 문구. 없으면 공공데이터 요금으로 생성 */
+    @Column(length = 300)
+    private String feeDescription;
+
+    /** 직접 입력한 운영시간 문구. 없으면 공공데이터 운영시간으로 생성 */
+    @Column(length = 300)
+    private String hoursDescription;
+
+    /** 팀이 현장/전화로 마지막 확인한 시각 (Asia/Seoul) */
+    private LocalDateTime verifiedAt;
+
     @Builder
     private ParkingLot(String managementNo, String name, ChungnamRegion region, ParkingCategory category,
                        String lotType, String roadAddress, String jibunAddress, Integer totalSpaces,
@@ -135,6 +163,42 @@ public class ParkingLot {
         this.longitude = latest.longitude;
         this.referenceDate = latest.referenceDate;
         this.syncedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 공공데이터에 없는 주차장(건물 주차장 등)을 직접 등록할 때 사용.
+     * externalId 는 프론트에 그대로 노출되는 ID (예: "lot-demo-cafe")
+     */
+    public static ParkingLot manual(String externalId, String name, String address,
+                                    double entranceLatitude, double entranceLongitude,
+                                    String entrancePhotoUrl, String entranceGuide,
+                                    String feeDescription, String hoursDescription,
+                                    LocalDateTime verifiedAt) {
+        ChungnamRegion region = ChungnamRegion.fromAddress(address)
+                .orElseThrow(() -> new IllegalArgumentException("충남 시·군을 주소에서 찾을 수 없습니다: " + address));
+        ParkingLot lot = ParkingLot.builder()
+                .managementNo(externalId)
+                .name(name)
+                .region(region)
+                .category(ParkingCategory.UNKNOWN)
+                .roadAddress(address)
+                .feeType(FeeType.UNKNOWN)
+                .latitude(entranceLatitude)
+                .longitude(entranceLongitude)
+                .build();
+        lot.source = LotSource.MANUAL;
+        lot.entranceLatitude = entranceLatitude;
+        lot.entranceLongitude = entranceLongitude;
+        lot.entrancePhotoUrl = entrancePhotoUrl;
+        lot.entranceGuide = entranceGuide;
+        lot.feeDescription = feeDescription;
+        lot.hoursDescription = hoursDescription;
+        lot.verifiedAt = verifiedAt;
+        return lot;
+    }
+
+    public boolean isManual() {
+        return source == LotSource.MANUAL;
     }
 
     public String getDisplayAddress() {

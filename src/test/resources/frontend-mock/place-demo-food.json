@@ -1,0 +1,19 @@
+{
+  "place": {
+    "id": "place-demo-food",
+    "name": "공주 느린식탁",
+    "category": "음식점",
+    "address": "충남 공주시 중동 · 예시 매장",
+    "coordinates": {
+      "latitude": 36.4544,
+      "longitude": 127.1248
+    },
+    "parkingStatus": "unknown",
+    "parkingSummary": "주차 정보 없음 · 방문 전 확인 필요"
+  },
+  "placeHoursDescription": null,
+  "operatingHoursWarning": null,
+  "primaryParking": [],
+  "alternatives": [],
+  "isDemo": true
+}

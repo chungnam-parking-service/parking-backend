@@ -28,5 +28,10 @@ public class AppConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .maxAge(3600);
+        // 프론트 API.md 계약 경로 (/api 접두사 없음)
+        registry.addMapping("/places/**")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("GET", "OPTIONS")
+                .maxAge(3600);
     }
 }

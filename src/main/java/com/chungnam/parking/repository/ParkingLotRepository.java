@@ -17,7 +17,10 @@ public interface ParkingLotRepository extends JpaRepository<ParkingLot, Long>, J
 
     List<ParkingLot> findByManagementNoIn(Collection<String> managementNos);
 
-    long countByRegion(ChungnamRegion region);
+    /** 공공데이터 주차장만 카운트 (직접 등록한 건물 주차장 제외) */
+    @Query("select count(p) from ParkingLot p where p.region = :region "
+            + "and (p.source is null or p.source = com.chungnam.parking.domain.LotSource.PUBLIC_DATA)")
+    long countByRegion(@Param("region") ChungnamRegion region);
 
     /**
      * 반경 검색: 위경도 박스로 1차 필터 후 Haversine 공식으로 실제 거리(m)를 계산한다.
@@ -34,6 +37,7 @@ public interface ParkingLotRepository extends JpaRepository<ParkingLot, Long>, J
                 FROM parking_lot p
                 WHERE p.latitude BETWEEN :minLat AND :maxLat
                   AND p.longitude BETWEEN :minLng AND :maxLng
+                  AND (p.lot_source IS NULL OR p.lot_source = 'PUBLIC_DATA')
             ) t
             WHERE t.distance <= :radius
             ORDER BY t.distance

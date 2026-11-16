@@ -2,6 +2,7 @@ package com.chungnam.parking.repository;
 
 import com.chungnam.parking.domain.ChungnamRegion;
 import com.chungnam.parking.domain.FeeType;
+import com.chungnam.parking.domain.LotSource;
 import com.chungnam.parking.domain.ParkingCategory;
 import com.chungnam.parking.domain.ParkingLot;
 import com.chungnam.parking.dto.ParkingSearchCondition;
@@ -20,12 +21,20 @@ public final class ParkingLotSpecs {
 
     public static Specification<ParkingLot> of(ParkingSearchCondition cond) {
         List<Specification<ParkingLot>> specs = new ArrayList<>();
+        specs.add(publicDataOnly());
         if (cond.region() != null) specs.add(region(cond.region()));
         if (cond.category() != null) specs.add(category(cond.category()));
         if (cond.feeType() != null) specs.add(feeType(cond.feeType()));
         if (cond.keyword() != null && !cond.keyword().isBlank()) specs.add(keyword(cond.keyword().trim()));
         if (cond.minSpaces() != null) specs.add(minSpaces(cond.minSpaces()));
         return Specification.allOf(specs);
+    }
+
+    /** 직접 등록한 건물 주차장(MANUAL)은 일반 주차장 검색에서 제외 */
+    static Specification<ParkingLot> publicDataOnly() {
+        return (root, q, cb) -> cb.or(
+                cb.isNull(root.get("source")),
+                cb.equal(root.get("source"), LotSource.PUBLIC_DATA));
     }
 
     static Specification<ParkingLot> region(ChungnamRegion region) {

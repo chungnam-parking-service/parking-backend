@@ -1,6 +1,7 @@
 package com.chungnam.parking.common;
 
 import jakarta.validation.ConstraintViolationException;
+import com.chungnam.parking.place.PlaceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.data.core.PropertyReferenceException;
@@ -16,6 +17,11 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(PlaceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handlePlaceNotFound(PlaceNotFoundException e) {
+        return error(HttpStatus.NOT_FOUND, "PLACE_NOT_FOUND", "목적지를 찾을 수 없습니다.");
+    }
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException e) {

@@ -1,0 +1,45 @@
+{
+  "place": {
+    "id": "place-demo-books",
+    "name": "온양 작은책방",
+    "category": "서점",
+    "address": "충남 아산시 온천동 · 예시 매장",
+    "coordinates": {
+      "latitude": 36.7803,
+      "longitude": 127.0022
+    },
+    "parkingStatus": "unavailable",
+    "parkingSummary": "매장 주차 불가 · 주변 주차장 확인"
+  },
+  "placeHoursDescription": "화–일 11:00–20:00 · 월요일 휴무",
+  "operatingHoursWarning": null,
+  "primaryParking": [],
+  "alternatives": [
+    {
+      "lot": {
+        "id": "lot-demo-onyang",
+        "name": "온양 마을주차장",
+        "address": "충남 아산시 온천동 · 예시 주소",
+        "entranceCoordinates": {
+          "latitude": 36.7807,
+          "longitude": 127.003
+        },
+        "entrancePhotoUrl": null,
+        "entranceGuide": "큰길에서 파란 P 표지판을 따라 진입하세요.",
+        "feeDescription": "30분 600원 · 이후 10분당 200원",
+        "hoursDescription": "24시간",
+        "verifiedAt": null
+      },
+      "relationship": "nearby",
+      "benefitDescription": null,
+      "validationInstructions": "출차 전 1층 무인 정산기에서 결제하세요.",
+      "walkingMinutes": 3,
+      "walkingSteps": [
+        "보행자 출구로 나와 시장 방향으로 걸어주세요.",
+        "첫 번째 골목에서 왼쪽으로 이동하세요.",
+        "책방 간판이 있는 1층으로 들어가세요."
+      ]
+    }
+  ],
+  "isDemo": true
+}
