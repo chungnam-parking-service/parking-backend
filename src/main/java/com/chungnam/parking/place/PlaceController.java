@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,12 +27,15 @@ public class PlaceController {
     private final PlaceService placeService;
 
     @Operation(summary = "목적지 검색",
-            description = "이름·주소·카테고리로 검색합니다(공백 무시). 빈 검색어는 빈 목록, 100자 초과는 400. 페이지네이션 없음.")
+            description = "직접 등록한 목적지와 AI 파트 매장(음식점)을 검색합니다. 시·군 이름은 주소 조건, 나머지는 매장명·업종. "
+                    + "빈 검색어는 빈 목록, 100자 초과는 400. 결과는 limit 개까지, total 은 전체 일치 수.")
     @GetMapping
     public SearchPlacesResponse search(
-            @Parameter(description = "검색어 (앞뒤 공백 제거 후 1–100자)", example = "천안")
-            @RequestParam(required = false) String query) {
-        return placeService.search(query);
+            @Parameter(description = "검색어 (앞뒤 공백 제거 후 1–100자)", example = "천안 배나무숲")
+            @RequestParam(required = false) String query,
+            @Parameter(description = "최대 결과 수 1–50", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(PlaceService.MAX_SEARCH_LIMIT) int limit) {
+        return placeService.search(query, limit);
     }
 
     @Operation(summary = "목적지 주차 상세",

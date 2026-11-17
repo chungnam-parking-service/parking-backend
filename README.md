@@ -19,7 +19,17 @@ Spring Boot 4.1 · Java 17 · JPA · H2(로컬) / MySQL(운영)
 IntelliJ에서는 `ParkingApplication.java`의 ▶ 버튼으로 실행하거나, Gradle 탭에서 `application → bootRun`을 실행하세요.
 
 운영(MySQL) 실행 시 환경변수: `SPRING_PROFILES_ACTIVE=prod`, `DB_HOST`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`,
-`PUBLIC_DATA_SERVICE_KEY`(공공데이터포털 Decoding 키), `ADMIN_API_KEY`
+`PUBLIC_DATA_SERVICE_KEY`(공공데이터포털 Decoding 키), `ADMIN_API_KEY`, `AI_CARDS_URL`(선택, 기본은 AI 레포 Releases 데이터)
+
+### AI 파트 매장 데이터 (음식점 약 3만9천 곳)
+프론트 검색·상세(`/places`)에 쓰는 매장 데이터는 AI 레포 Releases에서 가져옵니다. 서버를 켠 뒤 한 번 실행하세요(약 20초).
+
+```bash
+curl -X POST -H "X-Admin-Key: $ADMIN_API_KEY" http://localhost:8080/api/admin/places/import-cards
+```
+
+로컬(H2)은 서버를 껐다 켜면 비워지니 다시 실행합니다. 운영 MySQL은 처음 한 번 `db/place_card.sql`로 테이블을 만든 뒤 실행합니다.
+변환 규칙은 `docs/API_SPEC.md` 2-1장에 있습니다.
 
 ## API
 
@@ -33,7 +43,11 @@ IntelliJ에서는 `ParkingApplication.java`의 ▶ 버튼으로 실행하거나,
 | GET | `/api/parking-lots/{id}` | 상세 |
 | GET | `/api/parking-lots/{id}/fee?minutes=90` | 예상 요금 |
 | GET | `/api/regions` | 충남 15개 시·군 + 주차장 수 |
+| GET | `/places?query=천안&limit=20` | 목적지 검색 (직접 등록 + AI 매장) |
+| GET | `/places/{placeId}/parking` | 목적지 주차 안내 |
 | POST | `/api/admin/sync` | 공공데이터 수동 동기화 (헤더 `X-Admin-Key`) |
+| POST | `/api/admin/places/import-cards` | AI 매장 데이터 가져오기 (헤더 `X-Admin-Key`) |
+| PUT·DELETE | `/api/admin/places/{placeId}` | 목적지 직접 등록·삭제 (헤더 `X-Admin-Key`) |
 
 ### 검색 파라미터 (`/api/parking-lots`)
 - `keyword` 주차장명·주소, `region` (CHEONAN, ASAN, GONGJU …), `category` (PUBLIC/PRIVATE),
