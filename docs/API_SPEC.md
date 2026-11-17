@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | **목적지 (프론트 API.md 계약)** | `GET /places`, `GET /places/{placeId}/parking` | 프론트 검색·상세 화면 |
 | 주차장 조회 | `GET /api/parking-lots…`, `GET /api/regions` | 지도·주차장 목록 등 보조 화면 (선택) |
-| 관리자 | `POST /api/admin/sync`, `POST /api/admin/places/import-cards`, `PUT·DELETE /api/admin/places/{placeId}` | 백엔드 데이터 관리 전용 |
+| 관리자 | `POST /api/admin/sync`, `POST /api/admin/places/import-cards` | 백엔드 데이터 관리 전용 |
 
 ---
 
@@ -33,7 +33,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 
 ### CORS
 허용 출처: `http://localhost:5173`(Vite), `http://localhost:3000`. 배포 출처는 정해지면 추가합니다.
-허용 메서드: `/places/**` GET, `/api/**` GET·POST. (관리자 PUT·DELETE는 브라우저가 아니라 curl·Swagger 용)
+허용 메서드: `/places/**` GET, `/api/**` GET·POST.
 
 ### 오류 body
 ```json
@@ -60,7 +60,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 
 검색 대상은 두 가지이며, **직접 등록한 목적지를 먼저**, 이어서 AI 파트 매장을 보냅니다. `items`는 `limit`개까지, **`total`은 전체 일치 수**입니다(`items` 개수보다 클 수 있음).
 
-1. 직접 등록한 목적지(시연·관리자 등록): 이름 + 주소 + 카테고리를 공백 무시·대소문자 무시로 부분 일치, 이름순.
+1. 직접 등록한 목적지(지금은 시연 3곳): 이름 + 주소 + 카테고리를 공백 무시·대소문자 무시로 부분 일치, 이름순.
 2. AI 파트 매장(충남 음식점 약 3만9천 곳, 2-1 참고)
    - 질의에 시·군 이름(`천안`, `아산` …)이 있으면 **주소 조건**으로 쓰고, 나머지를 매장명·업종에서 찾습니다. (`천안 배나무숲` → 천안의 "배나무숲")
    - 정렬: 매장명 완전 일치 → 앞부분 일치 → 포함 → 업종 일치. 같으면 주차 정보가 확인된 곳(`available` → `unavailable` → `unknown`), 짧은 이름 순.
@@ -275,7 +275,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | 직선거리로 추정한 `walkingMinutes` | `null` (등록값만 사용). 대체 주차장 순서는 원본의 가까운 순 그대로 |
 | AI 전용 필드 (`entranceSource`, `feeNote`, `source`, `holidayOnly`, `distanceMeters`, `evidence` 등) | 내보내지 않음 |
 
-같은 ID로 관리자 등록(5장)을 하면 직접 등록한 목적지가 우선합니다.
+같은 ID의 직접 등록 목적지가 있으면 그쪽이 우선합니다.
 
 ---
 
@@ -399,10 +399,6 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | 401 | `UNAUTHORIZED` | 키 없음·불일치 |
 | 409 | `IMPORT_UNAVAILABLE` | 주소 미설정, 파일을 받거나 읽지 못함 |
 
-### 목적지 등록·수정 `PUT /api/admin/places/{placeId}` · 삭제 `DELETE /api/admin/places/{placeId}`
-헤더 `X-Admin-Key` 필요. 목적지와 연결 주차장을 한 번에 보내며, 같은 `placeId`로 다시 보내면 통째로 교체합니다. 응답은 `GET /places/{placeId}/parking`과 같습니다. 삭제는 204, 없는 ID는 404 `PLACE_NOT_FOUND`입니다.
-`parking[]` 각 항목은 `lot`(직접 등록 주차장, 실제 입구 좌표) 또는 `existingLotId`(공공데이터 `lot-138`) 중 하나를 보냅니다. 요청 형식은 Swagger의 `UpsertPlaceRequest`를 참고하세요.
-
 ---
 
 ## 6. 프론트 초안에 대한 백엔드 결정 사항
@@ -413,7 +409,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | 빈 검색 | 400이 아니라 **200 + 빈 목록** (목업 어댑터와 동일). 100자 초과만 400 |
 | 페이지네이션 | 없음. 대신 `limit`(기본 20, 최대 50)개까지 반환하고 `total`은 전체 일치 수 |
 | 오류 body | `{ code, message }` + `status`, `timestamp`. `message`는 표시용이 아님 |
-| `entranceCoordinates` 필수 | 좌표 없는 주차장은 응답에서 제외. 공공데이터 주차장은 대표 좌표 사용 |
+| `entranceCoordinates` 필수 | 공공데이터 주차장은 대표 좌표, AI 데이터의 입구 좌표 없는 건물 주차장은 매장 좌표를 넣고 `coordinateType`으로 구분 |
 | 도보 시간 | 직접 등록한 값만 사용, 없으면 `null` / `[]` |
 | 운영시간 경고 | 목적지에 등록된 문구를 그대로 반환 |
 | 대체 주차장 추천 | 등록된 주변 주차장 + (선택) 반경 1km 공공데이터 최대 10곳, 도보 시간 오름차순·미확인 마지막 |
@@ -426,6 +422,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | --- | --- |
 | 정확도 피드백 | `POST /parking-lots/{parkingLotId}/feedback` — 정확함/부정확함, 방문 목적지 ID, 중복·스팸 제한, 인증 정책 합의 후 구현 |
 | 외부 장소 검색 | 카카오 로컬 API 등으로 등록되지 않은 장소 검색 (ID 매핑 규칙 합의 필요) |
+| 목적지·주차장 직접 등록 API | 지금은 서버 코드(시연 데이터)로만 등록 가능. 도보 안내·혜택을 손으로 보강할 때 필요 |
 | 실제 보행 경로 | 도보 시간·동선 자동 계산 |
 | 방문 예정 시각 기반 경고 | 시간대·자정·휴무 처리 합의 필요 |
 | 입구 사진 | 사진 저장소·공개 URL 정책 |
@@ -433,7 +430,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 ---
 
 변경 이력
-- v1.1 (2026-11-17): AI 파트 매장 데이터(약 3만9천 곳) 검색·상세 연결, 검색 `limit`, 주차장 `coordinateType`, 관리자 목적지 등록·데이터 가져오기 API
+- v1.1 (2026-11-17): AI 파트 매장 데이터(약 3만9천 곳) 검색·상세 연결, 검색 `limit`, 주차장 `coordinateType`, AI 데이터 가져오기 관리자 API
 - v1.0 (2026-11-16): 구현 기준 최종 명세. 실제 서버 응답 예시, 오류 코드, 결정 사항, 미구현 항목 정리
 - v0.3: 목적지 API를 프론트 경로(`/places`) 그대로 구현
 - v0.2: 프론트 초안 v0.1 기준 제안 명세

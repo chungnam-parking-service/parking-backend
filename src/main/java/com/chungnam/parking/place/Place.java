@@ -80,22 +80,6 @@ public class Place {
         refreshSearchText();
     }
 
-    /** 관리자 등록(PUT) 시 같은 ID 의 목적지를 통째로 덮어쓴다. 직접 입력한 데이터이므로 demo 는 해제된다. */
-    public void update(Place latest) {
-        this.name = latest.name;
-        this.category = latest.category;
-        this.address = latest.address;
-        this.latitude = latest.latitude;
-        this.longitude = latest.longitude;
-        this.parkingStatus = latest.parkingStatus;
-        this.parkingSummary = latest.parkingSummary;
-        this.hoursDescription = latest.hoursDescription;
-        this.operatingHoursWarning = latest.operatingHoursWarning;
-        this.demo = latest.demo;
-        this.includePublicNearby = latest.includePublicNearby;
-        refreshSearchText();
-    }
-
     @PrePersist
     @PreUpdate
     void refreshSearchText() {

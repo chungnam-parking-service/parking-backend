@@ -197,18 +197,6 @@ public class ParkingLot {
         return lot;
     }
 
-    /** 직접 등록한 주차장을 manual() 로 만든 최신 값으로 덮어쓴다 */
-    public void updateManualFrom(ParkingLot latest) {
-        updateFrom(latest);
-        this.entranceLatitude = latest.entranceLatitude;
-        this.entranceLongitude = latest.entranceLongitude;
-        this.entrancePhotoUrl = latest.entrancePhotoUrl;
-        this.entranceGuide = latest.entranceGuide;
-        this.feeDescription = latest.feeDescription;
-        this.hoursDescription = latest.hoursDescription;
-        this.verifiedAt = latest.verifiedAt;
-    }
-
     public boolean isManual() {
         return source == LotSource.MANUAL;
     }

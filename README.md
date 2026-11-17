@@ -47,7 +47,6 @@ curl -X POST -H "X-Admin-Key: $ADMIN_API_KEY" http://localhost:8080/api/admin/pl
 | GET | `/places/{placeId}/parking` | 목적지 주차 안내 |
 | POST | `/api/admin/sync` | 공공데이터 수동 동기화 (헤더 `X-Admin-Key`) |
 | POST | `/api/admin/places/import-cards` | AI 매장 데이터 가져오기 (헤더 `X-Admin-Key`) |
-| PUT·DELETE | `/api/admin/places/{placeId}` | 목적지 직접 등록·삭제 (헤더 `X-Admin-Key`) |
 
 ### 검색 파라미터 (`/api/parking-lots`)
 - `keyword` 주차장명·주소, `region` (CHEONAN, ASAN, GONGJU …), `category` (PUBLIC/PRIVATE),
