@@ -1,4 +1,4 @@
-# 충남 주차 안내 백엔드 API 명세서 v1.0
+# 충남 주차 안내 백엔드 API 명세서 v1.1
 
 프론트 [`docs/API.md` 주차 안내 API 초안 v0.1]을 기준으로 **실제 구현된 백엔드 API만** 정리한 최종 명세입니다.
 목적지 API는 프론트 초안의 경로·필드·null 규칙을 그대로 따르며, 응답 타입은 프론트 `src/domain/parking.ts`와 1:1로 대응합니다.
@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | **목적지 (프론트 API.md 계약)** | `GET /places`, `GET /places/{placeId}/parking` | 프론트 검색·상세 화면 |
 | 주차장 조회 | `GET /api/parking-lots…`, `GET /api/regions` | 지도·주차장 목록 등 보조 화면 (선택) |
-| 관리자 | `POST /api/admin/sync` | 백엔드 데이터 관리 전용 |
+| 관리자 | `POST /api/admin/sync`, `POST /api/admin/places/import-cards` | 백엔드 데이터 관리 전용 |
 
 ---
 
@@ -56,10 +56,15 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | 파라미터 | 필수 | 규칙 |
 | --- | --- | --- |
 | `query` | | 앞뒤 공백 제거 후 1–100자. **없거나 공백뿐이면 200 + 빈 목록**, 100자 초과는 400 |
+| `limit` | | 최대 결과 수 1–50, 기본 20. 범위 밖은 400 |
 
-- 이름 + 주소 + 카테고리를 대상으로, 공백을 무시하고 대소문자 구분 없이 부분 일치 검색합니다. (`모퉁이커피` → "모퉁이 커피", `카페` → 카테고리 일치)
-- 페이지네이션 없이 전체 결과를 **이름순**으로 반환합니다. `total`은 `items` 개수입니다.
-- 검색 대상은 백엔드에 등록된 목적지입니다. (외부 장소 검색 연동은 7장 참고)
+검색 대상은 두 가지이며, **직접 등록한 목적지를 먼저**, 이어서 AI 파트 매장을 보냅니다. `items`는 `limit`개까지, **`total`은 전체 일치 수**입니다(`items` 개수보다 클 수 있음).
+
+1. 직접 등록한 목적지(지금은 시연 3곳): 이름 + 주소 + 카테고리를 공백 무시·대소문자 무시로 부분 일치, 이름순.
+2. AI 파트 매장(충남 음식점 약 3만9천 곳, 2-1 참고)
+   - 질의에 시·군 이름(`천안`, `아산` …)이 있으면 **주소 조건**으로 쓰고, 나머지를 매장명·업종에서 찾습니다. (`천안 배나무숲` → 천안의 "배나무숲")
+   - 정렬: 매장명 완전 일치 → 앞부분 일치 → 포함 → 업종 일치. 같으면 주차 정보가 확인된 곳(`available` → `unavailable` → `unknown`), 짧은 이름 순.
+   - 시·군 이름만 보내면 그 지역 매장 전체가 대상입니다.
 
 ### 200 — `SearchPlacesResponse`
 ```json
@@ -134,7 +139,8 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
         "entranceGuide": "매장 정문 반대편, 건물 오른쪽 골목의 지하 입구로 들어가세요.",
         "feeDescription": "무료 시간 초과 시 10분당 500원",
         "hoursDescription": "매일 09:00–21:00",
-        "verifiedAt": "2026-11-07T09:00:00+09:00"
+        "verifiedAt": "2026-11-07T09:00:00+09:00",
+        "coordinateType": "entrance"
       },
       "relationship": "shared",
       "benefitDescription": "음료 1잔 이상 구매 시 2시간 무료",
@@ -158,7 +164,8 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
         "entranceGuide": "큰길에서 파란 P 표지판을 따라 진입하세요.",
         "feeDescription": "최초 30분 500원 · 이후 10분당 200원",
         "hoursDescription": "매일 08:00–23:00",
-        "verifiedAt": null
+        "verifiedAt": null,
+        "coordinateType": "entrance"
       },
       "relationship": "nearby",
       "benefitDescription": null,
@@ -188,7 +195,8 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
     "entranceGuide": null,
     "feeDescription": "기본 30분 1,000원 · 추가 10분당 300원 · 1일 10,000원",
     "hoursDescription": "24시간",
-    "verifiedAt": null
+    "verifiedAt": null,
+    "coordinateType": "representative"
   },
   "relationship": "nearby",
   "benefitDescription": null,
@@ -232,6 +240,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | `feeDescription` | string \| null | 등록값 | 공공데이터로 생성. 무료는 `"무료"`, 정보 없음은 `null` |
 | `hoursDescription` | string \| null | 등록값 | 공공데이터로 생성. `"24시간"`, `"매일 09:00–21:00"`, `"평일 09:00–20:00 · 토 09:00–18:00"`, 정보 없음은 `null` |
 | `verifiedAt` | string \| null | 팀이 마지막으로 확인한 시각 | `null` |
+| `coordinateType` | string | `entrance` (실제 입구 좌표) | `representative` (주차장 대표 좌표, 입구와 다를 수 있음) |
 
 ### `alternatives` 구성과 정렬
 1. 팀이 직접 등록한 주변 주차장 (도보 시간·안내 포함)
@@ -251,6 +260,22 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | `place-demo-cafe` | `available` | 연결 주차장 + 주변 주차장, 운영시간 경고 |
 | `place-demo-books` | `unavailable` | 연결 없음 → 주변 주차장 1곳 |
 | `place-demo-food` | `unknown` | 연결·주변 모두 `[]` → 출발 버튼 없음 |
+
+### 2-1. AI 파트 매장 데이터
+직접 등록한 목적지가 아니면 AI 파트 매장 카드(AI 레포 Releases `place_parking_cn.jsonl`)에서 찾습니다. ID는 `sangga-…` 형식이고 `isDemo`는 `false`입니다.
+가져올 때(5장 `import-cards`) 아래처럼 변환해 이 명세와 같은 형식으로만 내보냅니다. 3만9,365곳 전부 프론트 `placeParkingSchema` 검증을 통과하는 것을 확인했습니다(2026-11-17).
+
+| 원본 | 응답 |
+| --- | --- |
+| 건물 주차장 입구 좌표 없음 | 매장 좌표를 넣고 `coordinateType: "representative"` |
+| 입구 좌표 출처 "OSM 주차장 입구 표시" | `coordinateType: "entrance"` |
+| 입구 좌표 출처 "…(추정)", "주차장 대표 좌표(입구 미확인)" | `coordinateType: "representative"` |
+| 주차장 주소 없음 (OSM) | `""` |
+| `verifiedAt` = 공공데이터 기준일 (`"2026-04-16"`) | `null` (팀이 확인한 시각이 아님) |
+| 직선거리로 추정한 `walkingMinutes` | `null` (등록값만 사용). 대체 주차장 순서는 원본의 가까운 순 그대로 |
+| AI 전용 필드 (`entranceSource`, `feeNote`, `source`, `holidayOnly`, `distanceMeters`, `evidence` 등) | 내보내지 않음 |
+
+같은 ID의 직접 등록 목적지가 있으면 그쪽이 우선합니다.
 
 ---
 
@@ -362,6 +387,18 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | 401 | `UNAUTHORIZED` | 키 없음·불일치 |
 | 409 | `SYNC_UNAVAILABLE` | 인증키 미설정 또는 동기화 진행 중 |
 
+### AI 파트 매장 데이터 가져오기 `POST /api/admin/places/import-cards`
+헤더 `X-Admin-Key` 필요. 환경변수 `AI_CARDS_URL`(기본: AI 레포 Releases `data-2026-11-17`의 `place_parking_cn.jsonl.gz`)을 받아 매장 카드를 **통째로 교체**합니다. 2-1의 변환을 거쳐 저장하며, 도중에 실패하면 기존 데이터가 그대로 남습니다.
+```json
+{ "imported": 39365, "skipped": 0, "elapsedMs": 17519 }
+```
+`skipped`는 계약 형식으로 읽히지 않아 건너뛴 행 수입니다. 운영 DB에는 처음 한 번 `db/place_card.sql`로 테이블을 만들어야 합니다.
+
+| HTTP | code | 언제 |
+| --- | --- | --- |
+| 401 | `UNAUTHORIZED` | 키 없음·불일치 |
+| 409 | `IMPORT_UNAVAILABLE` | 주소 미설정, 파일을 받거나 읽지 못함 |
+
 ---
 
 ## 6. 프론트 초안에 대한 백엔드 결정 사항
@@ -370,9 +407,9 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | --- | --- |
 | 경로 | 초안 그대로 `/places`, `/places/{placeId}/parking` (`/api` 접두사 없음) |
 | 빈 검색 | 400이 아니라 **200 + 빈 목록** (목업 어댑터와 동일). 100자 초과만 400 |
-| 페이지네이션 | 없음. 전체 결과 반환 |
+| 페이지네이션 | 없음. 대신 `limit`(기본 20, 최대 50)개까지 반환하고 `total`은 전체 일치 수 |
 | 오류 body | `{ code, message }` + `status`, `timestamp`. `message`는 표시용이 아님 |
-| `entranceCoordinates` 필수 | 좌표 없는 주차장은 응답에서 제외. 공공데이터 주차장은 대표 좌표 사용 |
+| `entranceCoordinates` 필수 | 공공데이터 주차장은 대표 좌표, AI 데이터의 입구 좌표 없는 건물 주차장은 매장 좌표를 넣고 `coordinateType`으로 구분 |
 | 도보 시간 | 직접 등록한 값만 사용, 없으면 `null` / `[]` |
 | 운영시간 경고 | 목적지에 등록된 문구를 그대로 반환 |
 | 대체 주차장 추천 | 등록된 주변 주차장 + (선택) 반경 1km 공공데이터 최대 10곳, 도보 시간 오름차순·미확인 마지막 |
@@ -385,7 +422,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | --- | --- |
 | 정확도 피드백 | `POST /parking-lots/{parkingLotId}/feedback` — 정확함/부정확함, 방문 목적지 ID, 중복·스팸 제한, 인증 정책 합의 후 구현 |
 | 외부 장소 검색 | 카카오 로컬 API 등으로 등록되지 않은 장소 검색 (ID 매핑 규칙 합의 필요) |
-| 목적지·주차장 등록 API | 지금은 서버 코드(시연 데이터)로만 등록 가능. 관리자용 등록·수정 API 필요 |
+| 목적지·주차장 직접 등록 API | 지금은 서버 코드(시연 데이터)로만 등록 가능. 도보 안내·혜택을 손으로 보강할 때 필요 |
 | 실제 보행 경로 | 도보 시간·동선 자동 계산 |
 | 방문 예정 시각 기반 경고 | 시간대·자정·휴무 처리 합의 필요 |
 | 입구 사진 | 사진 저장소·공개 URL 정책 |
@@ -393,6 +430,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 ---
 
 변경 이력
+- v1.1 (2026-11-17): AI 파트 매장 데이터(약 3만9천 곳) 검색·상세 연결, 검색 `limit`, 주차장 `coordinateType`, AI 데이터 가져오기 관리자 API
 - v1.0 (2026-11-16): 구현 기준 최종 명세. 실제 서버 응답 예시, 오류 코드, 결정 사항, 미구현 항목 정리
 - v0.3: 목적지 API를 프론트 경로(`/places`) 그대로 구현
 - v0.2: 프론트 초안 v0.1 기준 제안 명세

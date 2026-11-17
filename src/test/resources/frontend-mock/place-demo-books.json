@@ -28,7 +28,8 @@
         "entranceGuide": "큰길에서 파란 P 표지판을 따라 진입하세요.",
         "feeDescription": "30분 600원 · 이후 10분당 200원",
         "hoursDescription": "24시간",
-        "verifiedAt": null
+        "verifiedAt": null,
+        "coordinateType": "entrance"
       },
       "relationship": "nearby",
       "benefitDescription": null,

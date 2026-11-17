@@ -43,7 +43,8 @@ public final class PlaceDtos {
             String entranceGuide,           // null 가능
             String feeDescription,          // null 가능
             String hoursDescription,        // null 가능
-            OffsetDateTime verifiedAt       // null 가능, "2026-11-07T09:00:00+09:00"
+            OffsetDateTime verifiedAt,      // null 가능, "2026-11-07T09:00:00+09:00"
+            String coordinateType           // entrance(실제 입구) | representative(주차장 대표 좌표) | unknown
     ) {
     }
 

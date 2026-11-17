@@ -35,6 +35,10 @@ springdoc:
     tags-sorter: alpha
   default-produces-media-type: application/json
 
+# AI 파트 매장 주차 데이터. POST /api/admin/places/import-cards 로 가져온다 (https 또는 file 주소, .gz 가능)
+ai-cards:
+  url: ${AI_CARDS_URL:https://github.com/chungnam-parking-service/AI/releases/download/data-2026-11-17/place_parking_cn.jsonl.gz}
+
 # POST /api/admin/sync 호출 시 X-Admin-Key 헤더 값
 admin:
   api-key: ${ADMIN_API_KEY:}

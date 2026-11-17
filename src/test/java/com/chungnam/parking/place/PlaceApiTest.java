@@ -116,6 +116,8 @@ class PlaceApiTest {
                 .andExpect(jsonPath("$.alternatives[0].lot.feeDescription").value("기본 30분 1,000원 · 추가 10분당 300원 · 1일 10,000원"))
                 .andExpect(jsonPath("$.alternatives[0].lot.hoursDescription").value("24시간"))
                 .andExpect(jsonPath("$.alternatives[0].lot.entranceCoordinates.latitude").value(36.8195))
+                // 공공데이터 좌표는 입구가 아니라 대표 좌표
+                .andExpect(jsonPath("$.alternatives[*].lot.coordinateType", everyItem(is("representative"))))
                 // 모르는 값은 null / [] 로 (필드 자체는 존재)
                 .andExpect(jsonPath("$.alternatives[0].walkingMinutes").value(nullValue()))
                 .andExpect(jsonPath("$.alternatives[0].benefitDescription").value(nullValue()))

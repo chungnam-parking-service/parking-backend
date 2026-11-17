@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.time.Clock;
@@ -14,6 +15,14 @@ public class AppConfig implements WebMvcConfigurer {
 
     @Value("${cors.allowed-origins}")
     private String[] allowedOrigins;
+
+    @Value("${admin.api-key:}")
+    private String adminApiKey;
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new AdminKeyInterceptor(adminApiKey)).addPathPatterns("/api/admin/**");
+    }
 
     /** 운영시간 판단 등에 사용 (테스트에서 고정 시각으로 교체 가능) */
     @Bean

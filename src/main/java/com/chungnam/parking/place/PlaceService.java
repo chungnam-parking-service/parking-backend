@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 public class PlaceService {
 
     public static final int MAX_QUERY_LENGTH = 100;
+    public static final int MAX_SEARCH_LIMIT = 50;
     static final int NEARBY_RADIUS_METERS = 1000;
     static final int NEARBY_LIMIT = 10;
     private static final double METERS_PER_DEGREE_LAT = 111_320d;
@@ -29,9 +30,13 @@ public class PlaceService {
     private final PlaceRepository placeRepository;
     private final PlaceParkingLinkRepository linkRepository;
     private final ParkingLotRepository parkingLotRepository;
+    private final PlaceCardService cardService;
 
-    /** GET /places?query= */
-    public SearchPlacesResponse search(String query) {
+    /**
+     * GET /places?query=&limit=
+     * 직접 등록한 목적지를 먼저, 이어서 AI 파트 매장 카드를 limit 개까지. total 은 전체 일치 수.
+     */
+    public SearchPlacesResponse search(String query, int limit) {
         String trimmed = query == null ? "" : query.trim();
         if (trimmed.isEmpty()) {
             return new SearchPlacesResponse(List.of(), 0);   // 목업과 동일: 빈 검색은 빈 목록
@@ -39,16 +44,24 @@ public class PlaceService {
         if (trimmed.length() > MAX_QUERY_LENGTH) {
             throw new IllegalArgumentException("검색어는 " + MAX_QUERY_LENGTH + "자 이하로 입력해 주세요.");
         }
-        List<PlaceDto> items = placeRepository.search(Place.normalize(trimmed)).stream()
+        List<PlaceDto> own = placeRepository.search(Place.normalize(trimmed)).stream()
                 .map(PlaceService::toPlaceDto)
                 .toList();
-        return new SearchPlacesResponse(items, items.size());
+        Set<String> ownIds = own.stream().map(PlaceDto::id).collect(Collectors.toSet());
+        PlaceCardService.CardSearch cards = cardService.search(trimmed, limit);
+        List<PlaceDto> items = java.util.stream.Stream.concat(own.stream(),
+                        cards.items().stream().filter(p -> !ownIds.contains(p.id())))   // 같은 ID 면 직접 등록이 우선
+                .limit(limit)
+                .toList();
+        return new SearchPlacesResponse(items, (int) Math.min(Integer.MAX_VALUE, own.size() + cards.total()));
     }
 
-    /** GET /places/{placeId}/parking */
+    /** GET /places/{placeId}/parking. 직접 등록한 목적지가 없으면 AI 파트 매장 카드에서 찾는다. */
     public PlaceParkingResponse getParking(String placeId) {
-        Place place = placeRepository.findById(placeId)
-                .orElseThrow(() -> new PlaceNotFoundException(placeId));
+        Place place = placeRepository.findById(placeId).orElse(null);
+        if (place == null) {
+            return cardService.find(placeId).orElseThrow(() -> new PlaceNotFoundException(placeId));
+        }
 
         List<PlaceParkingLink> links = linkRepository.findByPlace_IdOrderBySortOrderAsc(placeId);
 
@@ -125,9 +138,11 @@ public class PlaceService {
         // 직접 등록 주차장은 등록한 외부 ID, 공공데이터 주차장은 "lot-{번호}"
         String id = lot.isManual() ? lot.getManagementNo() : "lot-" + lot.getId();
 
-        Coordinates entrance = (lot.getEntranceLatitude() != null && lot.getEntranceLongitude() != null)
+        boolean hasEntrance = lot.getEntranceLatitude() != null && lot.getEntranceLongitude() != null;
+        Coordinates entrance = hasEntrance
                 ? new Coordinates(lot.getEntranceLatitude(), lot.getEntranceLongitude())
                 : new Coordinates(lot.getLatitude(), lot.getLongitude()); // 공공데이터: 대표 좌표
+        String coordinateType = hasEntrance ? "entrance" : "representative";
 
         String fee = lot.getFeeDescription() != null ? lot.getFeeDescription()
                 : lot.isManual() ? null : LotDescriptions.fee(lot.getFeeType(), lot.getFeeInfo());
@@ -143,6 +158,7 @@ public class PlaceService {
                 lot.getEntranceGuide(),
                 fee,
                 hours,
-                lot.getVerifiedAt() == null ? null : lot.getVerifiedAt().atOffset(SEOUL));
+                lot.getVerifiedAt() == null ? null : lot.getVerifiedAt().atOffset(SEOUL),
+                coordinateType);
     }
 }

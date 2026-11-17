@@ -27,7 +27,8 @@
         "entranceGuide": "매장 정문 반대편, 건물 오른쪽 골목의 지하 입구로 들어가세요.",
         "feeDescription": "무료 시간 초과 시 10분당 500원",
         "hoursDescription": "매일 09:00–21:00",
-        "verifiedAt": "2026-11-07T09:00:00+09:00"
+        "verifiedAt": "2026-11-07T09:00:00+09:00",
+        "coordinateType": "entrance"
       },
       "relationship": "shared",
       "benefitDescription": "음료 1잔 이상 구매 시 2시간 무료",
@@ -54,7 +55,8 @@
         "entranceGuide": "큰길에서 파란 P 표지판을 따라 진입하세요.",
         "feeDescription": "최초 30분 500원 · 이후 10분당 200원",
         "hoursDescription": "매일 08:00–23:00",
-        "verifiedAt": null
+        "verifiedAt": null,
+        "coordinateType": "entrance"
       },
       "relationship": "nearby",
       "benefitDescription": null,
