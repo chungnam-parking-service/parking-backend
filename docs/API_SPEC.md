@@ -134,7 +134,8 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
         "entranceGuide": "매장 정문 반대편, 건물 오른쪽 골목의 지하 입구로 들어가세요.",
         "feeDescription": "무료 시간 초과 시 10분당 500원",
         "hoursDescription": "매일 09:00–21:00",
-        "verifiedAt": "2026-11-07T09:00:00+09:00"
+        "verifiedAt": "2026-11-07T09:00:00+09:00",
+        "coordinateType": "entrance"
       },
       "relationship": "shared",
       "benefitDescription": "음료 1잔 이상 구매 시 2시간 무료",
@@ -158,7 +159,8 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
         "entranceGuide": "큰길에서 파란 P 표지판을 따라 진입하세요.",
         "feeDescription": "최초 30분 500원 · 이후 10분당 200원",
         "hoursDescription": "매일 08:00–23:00",
-        "verifiedAt": null
+        "verifiedAt": null,
+        "coordinateType": "entrance"
       },
       "relationship": "nearby",
       "benefitDescription": null,
@@ -188,7 +190,8 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
     "entranceGuide": null,
     "feeDescription": "기본 30분 1,000원 · 추가 10분당 300원 · 1일 10,000원",
     "hoursDescription": "24시간",
-    "verifiedAt": null
+    "verifiedAt": null,
+    "coordinateType": "representative"
   },
   "relationship": "nearby",
   "benefitDescription": null,
@@ -232,6 +235,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | `feeDescription` | string \| null | 등록값 | 공공데이터로 생성. 무료는 `"무료"`, 정보 없음은 `null` |
 | `hoursDescription` | string \| null | 등록값 | 공공데이터로 생성. `"24시간"`, `"매일 09:00–21:00"`, `"평일 09:00–20:00 · 토 09:00–18:00"`, 정보 없음은 `null` |
 | `verifiedAt` | string \| null | 팀이 마지막으로 확인한 시각 | `null` |
+| `coordinateType` | string | `entrance` (실제 입구 좌표) | `representative` (주차장 대표 좌표, 입구와 다를 수 있음) |
 
 ### `alternatives` 구성과 정렬
 1. 팀이 직접 등록한 주변 주차장 (도보 시간·안내 포함)

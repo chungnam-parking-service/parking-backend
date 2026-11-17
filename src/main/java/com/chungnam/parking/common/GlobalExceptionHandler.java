@@ -23,6 +23,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "PLACE_NOT_FOUND", "목적지를 찾을 수 없습니다.");
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorized(UnauthorizedException e) {
+        return error(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", e.getMessage());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException e) {
         return error(HttpStatus.NOT_FOUND, "NOT_FOUND", e.getMessage());
@@ -33,6 +38,7 @@ public class GlobalExceptionHandler {
             HandlerMethodValidationException.class,
             ConstraintViolationException.class,
             MissingServletRequestParameterException.class,
+            org.springframework.http.converter.HttpMessageNotReadableException.class,   // 깨진 JSON 본문
             IllegalArgumentException.class
     })
     public ResponseEntity<ErrorResponse> handleBadRequest(Exception e) {

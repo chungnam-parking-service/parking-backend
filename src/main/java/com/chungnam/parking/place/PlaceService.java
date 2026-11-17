@@ -125,9 +125,11 @@ public class PlaceService {
         // 직접 등록 주차장은 등록한 외부 ID, 공공데이터 주차장은 "lot-{번호}"
         String id = lot.isManual() ? lot.getManagementNo() : "lot-" + lot.getId();
 
-        Coordinates entrance = (lot.getEntranceLatitude() != null && lot.getEntranceLongitude() != null)
+        boolean hasEntrance = lot.getEntranceLatitude() != null && lot.getEntranceLongitude() != null;
+        Coordinates entrance = hasEntrance
                 ? new Coordinates(lot.getEntranceLatitude(), lot.getEntranceLongitude())
                 : new Coordinates(lot.getLatitude(), lot.getLongitude()); // 공공데이터: 대표 좌표
+        String coordinateType = hasEntrance ? "entrance" : "representative";
 
         String fee = lot.getFeeDescription() != null ? lot.getFeeDescription()
                 : lot.isManual() ? null : LotDescriptions.fee(lot.getFeeType(), lot.getFeeInfo());
@@ -143,6 +145,7 @@ public class PlaceService {
                 lot.getEntranceGuide(),
                 fee,
                 hours,
-                lot.getVerifiedAt() == null ? null : lot.getVerifiedAt().atOffset(SEOUL));
+                lot.getVerifiedAt() == null ? null : lot.getVerifiedAt().atOffset(SEOUL),
+                coordinateType);
     }
 }
