@@ -43,6 +43,9 @@ curl -X POST http://localhost:8080/assistant/chat -H 'Content-Type: application/
 
 ## API
 
+- 프론트 연동 명세: [docs/API_SPEC.md](docs/API_SPEC.md)
+- 프론트 작업 요청 (v1.4 새 기능을 화면에 붙이는 방법): [docs/FRONTEND_TASKS.md](docs/FRONTEND_TASKS.md)
+
 서버 실행 후 **http://localhost:8080/swagger-ui.html** 에서 전체 API 문서를 보고 브라우저에서 바로 호출해 볼 수 있습니다.
 (OpenAPI JSON: `/v3/api-docs`)
 
