@@ -84,12 +84,27 @@ class PlaceCardApiTest {
                 // 날짜만 있던 verifiedAt 은 null, 주소가 없던 OSM 주차장은 ""
                 .andExpect(jsonPath("$.alternatives[*].lot.verifiedAt", everyItem(nullValue())))
                 .andExpect(jsonPath("$.alternatives[0].lot.address").value(""))
-                // 직선거리 추정 도보 시간은 내보내지 않는다
+                // 직선거리 추정 도보 시간은 walkingMinutes(확인된 값)로 내보내지 않는다
                 .andExpect(jsonPath("$.alternatives[*].walkingMinutes", everyItem(nullValue())))
                 // AI 전용 필드는 응답에 섞이지 않는다
                 .andExpect(jsonPath("$.alternatives[0].lot.entranceSource").doesNotExist())
-                .andExpect(jsonPath("$.alternatives[0].distanceMeters").doesNotExist())
+                .andExpect(jsonPath("$.alternatives[0].walkingMinutesIsEstimate").doesNotExist())
                 .andExpect(jsonPath("$.primaryParking[0].evidence").doesNotExist());
+    }
+
+    @Test
+    void 도보_거리와_추정_시간은_선택_필드로_준다() throws Exception {
+        mvc.perform(get("/places/{id}/parking", CAFE))
+                .andExpect(status().isOk())
+                // 디자인의 "도보 거리 약 474m · 약 8분"
+                .andExpect(jsonPath("$.alternatives[0].lot.id").value("osm-way-120027457"))
+                .andExpect(jsonPath("$.alternatives[0].distanceMeters").value(474))
+                .andExpect(jsonPath("$.alternatives[0].estimatedWalkingMinutes").value(8))
+                .andExpect(jsonPath("$.alternatives[1].distanceMeters").value(606))
+                .andExpect(jsonPath("$.alternatives[1].estimatedWalkingMinutes").value(11))
+                // 거리를 모르는 매장 주차장은 필드 자체가 없다 (null 로 보내지 않음)
+                .andExpect(jsonPath("$.primaryParking[0].distanceMeters").doesNotExist())
+                .andExpect(jsonPath("$.primaryParking[0].estimatedWalkingMinutes").doesNotExist());
     }
 
     @Test

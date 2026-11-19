@@ -1,4 +1,4 @@
-# 충남 주차 안내 백엔드 API 명세서 v1.2
+# 충남 주차 안내 백엔드 API 명세서 v1.4
 
 프론트 [`docs/API.md` 주차 안내 API 초안 v0.1]을 기준으로 **실제 구현된 백엔드 API만** 정리한 최종 명세입니다.
 목적지 API는 프론트 초안의 경로·필드·null 규칙을 그대로 따르며, 응답 타입은 프론트 `src/domain/parking.ts`와 1:1로 대응합니다.
@@ -8,8 +8,10 @@
 | --- | --- | --- |
 | **목적지 (프론트 API.md 계약)** | `GET /places`, `GET /places/{placeId}/parking` | 프론트 검색·상세 화면 |
 | 주차 비서 (AI 중계) | `POST /assistant/chat` | 자연어 주차 질문 화면 |
+| **정확도 피드백** (v1.4) | `POST /places/{placeId}/parking/{lotId}/feedback` | 주차장 상세의 "정보가 맞아요 / 달라요" |
+| **주차 정보 제보** (v1.4) | `POST /places/{placeId}/reports` (사진 포함 가능) | 디자인 메뉴 "주차 정보 등록" |
 | 주차장 조회 | `GET /api/parking-lots…`, `GET /api/regions` | 지도·주차장 목록 등 보조 화면 (선택) |
-| 관리자 | `POST /api/admin/sync`, `POST /api/admin/places/import-cards` | 백엔드 데이터 관리 전용 |
+| 관리자 | `POST /api/admin/sync`, `POST /api/admin/places/import-cards`, `/api/admin/feedback…`, `/api/admin/reports…` | 백엔드 데이터 관리 전용 |
 
 ---
 
@@ -33,8 +35,8 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 - **모르는 값은 `null`, 목록은 `[]`** 로 보냅니다. 필드를 생략하거나 0분·0원·"무료"로 대체하지 않습니다.
 
 ### CORS
-허용 출처: `http://localhost:5173`(Vite), `http://localhost:3000`. 배포 출처는 정해지면 추가합니다.
-허용 메서드: `/places/**` GET, `/assistant/**` POST, `/api/**` GET·POST.
+허용 출처: `http://localhost:5173`(Vite), `http://localhost:3000`. 배포 출처는 환경변수 `CORS_ALLOWED_ORIGINS`(쉼표 구분)로 바꿉니다.
+허용 메서드: `/places/**` GET·POST (v1.4: 피드백·제보), `/assistant/**` POST, `/api/**` GET·POST.
 
 ### 오류 body
 ```json
@@ -228,6 +230,14 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | `validationInstructions` | string \| null | 주차 등록 또는 정산 안내 |
 | `walkingMinutes` | number \| null | 주차장 → 목적지 도보 분. 등록값만 사용하며 **직선거리로 만들지 않음** |
 | `walkingSteps` | string[] | 순서대로 표시할 도보 안내. 미확인이면 `[]` |
+| `distanceMeters` | number, **선택** (v1.3) | 목적지 ↔ 주차장 **직선거리(m)**. 모르면 필드를 생략 |
+| `estimatedWalkingMinutes` | number, **선택** (v1.3) | 직선거리로 **추정한** 도보 분 (직선거리 × 1.3 ÷ 75m/분, 반올림, 최소 1). 화면에는 "약 N분". 모르면 필드를 생략 |
+
+**도보 거리·시간 (v1.3, 디자인 도보 안내 화면의 "도보 거리 약 250m · 예상 소요 시간 약 3분")**
+- `walkingMinutes`는 v1.1과 같이 **확인된 값만** 넣습니다. 추정값은 `estimatedWalkingMinutes`로 따로 보내므로 기존 화면·테스트는 그대로 동작합니다.
+- 표시 우선순위 제안: `walkingMinutes`가 있으면 "N분", 없고 `estimatedWalkingMinutes`가 있으면 "약 N분", 둘 다 없으면 "도보 정보 없음".
+- 실제 보행 경로가 아니므로 "약"을 붙여 주세요. 계단·횡단보도 등은 반영되지 않습니다.
+- 값이 있는 곳: AI 매장의 주변 주차장(`alternatives`), 공공데이터 자동 추천 주차장. 시연 목적지와 AI 매장의 건물 주차장(`primaryParking`)은 생략됩니다.
 
 **`ParkingLot`**
 | 필드 | 타입 | 직접 등록 주차장 | 공공데이터 주차장 |
@@ -273,8 +283,9 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | 입구 좌표 출처 "…(추정)", "주차장 대표 좌표(입구 미확인)" | `coordinateType: "representative"` |
 | 주차장 주소 없음 (OSM) | `""` |
 | `verifiedAt` = 공공데이터 기준일 (`"2026-04-16"`) | `null` (팀이 확인한 시각이 아님) |
-| 직선거리로 추정한 `walkingMinutes` | `null` (등록값만 사용). 대체 주차장 순서는 원본의 가까운 순 그대로 |
-| AI 전용 필드 (`entranceSource`, `feeNote`, `source`, `holidayOnly`, `distanceMeters`, `evidence` 등) | 내보내지 않음 |
+| 직선거리로 추정한 `walkingMinutes` | `walkingMinutes`는 `null` (등록값만 사용), 값은 `estimatedWalkingMinutes`로 (v1.3). 대체 주차장 순서는 원본의 가까운 순 그대로 |
+| `distanceMeters` | 그대로 (v1.3) |
+| AI 전용 필드 (`entranceSource`, `feeNote`, `source`, `holidayOnly`, `walkingMinutesIsEstimate`, `evidence` 등) | 내보내지 않음 |
 
 같은 ID의 직접 등록 목적지가 있으면 그쪽이 우선합니다.
 
@@ -319,6 +330,98 @@ LLM 응답이 **4–16초** 걸리므로 화면에 로딩 표시가 필요합니
 | 400 | `BAD_REQUEST` | 빈 질문, 500자 초과, 잘못된 `role` |
 | 503 | `ASSISTANT_UNAVAILABLE` | `AI_ASSISTANT_URL` 미설정 |
 | 503 | `ASSISTANT_FAILED` | AI 서버 오류·타임아웃 |
+
+---
+
+## 2-3. 정확도 피드백 `POST /places/{placeId}/parking/{lotId}/feedback` (v1.4)
+
+주차장 상세 화면의 "정보가 맞아요 / 달라요". `lotId`는 상세 응답의 `lot.id`입니다.
+
+요청 (`Content-Type: application/json`):
+```json
+{ "accurate": false, "comment": "입구가 건물 뒤편이에요" }
+```
+| 필드 | 필수 | 규칙 |
+| --- | --- | --- |
+| `accurate` | O | `true` = 맞아요, `false` = 달라요 |
+| `comment` | | 300자 이하. 관리자만 봅니다 |
+
+응답 201:
+```json
+{ "id": 1, "placeId": "sangga-MA010120220803118414", "lotId": "osm-way-472630487", "accurate": false, "createdAt": "2026-11-19T16:00:03.133+09:00" }
+```
+| HTTP | code | 언제 |
+| --- | --- | --- |
+| 400 | `BAD_REQUEST` | `accurate` 없음, 의견 300자 초과 |
+| 404 | `PLACE_NOT_FOUND` / `LOT_NOT_FOUND` | 없는 목적지, 그 목적지 응답에 없는 주차장 |
+| 409 | `DUPLICATE_FEEDBACK` | 같은 사람이 같은 주차장에 24시간 안에 다시 보냄 → "이미 의견을 보냈어요" |
+
+"같은 사람"은 IP를 비밀 값과 함께 해시한 값으로 구분합니다. IP 자체는 저장하지 않습니다.
+
+---
+
+## 2-4. 주차 정보 제보 `POST /places/{placeId}/reports` (v1.4)
+
+디자인 메뉴의 "주차 정보 등록". 사용자가 보낸 정보는 **관리자가 승인한 뒤에만** 화면에 나옵니다. 모르는 칸은 비워 두면 됩니다 (비운 칸은 바꾸지 않음).
+
+**사진 없이** (`Content-Type: application/json`):
+```json
+{
+  "lotId": "osm-way-472630487",
+  "entranceGuide": "건물 뒤편 골목으로 들어가면 지하 입구가 있어요",
+  "feeDescription": "최초 30분 무료, 이후 10분당 500원",
+  "hoursDescription": "매일 08:00–22:00",
+  "benefitDescription": "음료 구매 시 1시간 무료",
+  "validationInstructions": "카운터에 차량번호를 알려주세요",
+  "walkingSteps": ["주차장 출구로 나와 왼쪽", "횡단보도를 건너 매장"],
+  "entranceLatitude": 36.7922,
+  "entranceLongitude": 127.1299,
+  "comment": "관리자에게 남길 말"
+}
+```
+**사진과 함께** (`multipart/form-data`): `report` 파트에 위 JSON(파트의 Content-Type `application/json`), `photo` 파트에 사진 한 장.
+```js
+const form = new FormData();
+form.append('report', new Blob([JSON.stringify(report)], { type: 'application/json' }));
+form.append('photo', file);   // JPG·PNG·WebP, 5MB 이하
+fetch(`${base}/places/${placeId}/reports`, { method: 'POST', body: form });   // Content-Type 은 브라우저가 정함
+```
+
+| 필드 | 규칙 |
+| --- | --- |
+| `lotId` | 고칠 주차장의 `lot.id`. **비우면** 목적지 전체에 대한 제보(새 주차장 알림 등)로 받고, 승인해도 자동 반영되지 않음 |
+| `entranceGuide` | 500자 이하 |
+| `feeDescription`, `hoursDescription`, `benefitDescription` | 각 300자 이하 |
+| `validationInstructions` | 500자 이하 |
+| `walkingSteps` | 최대 10개, 각 300자 이하 |
+| `entranceLatitude`, `entranceLongitude` | **둘 다** 보내거나 둘 다 생략. 위도 33–39, 경도 124–132 |
+| `comment` | 1,000자 이하. 관리자만 봄 (화면에 나오지 않음) |
+| `photo` | JPG·PNG·WebP (파일 내용으로 판단), 5MB 이하 |
+
+응답 201:
+```json
+{ "id": 1, "status": "pending", "placeId": "sangga-MA010120220803118414", "lotId": "osm-way-472630487", "photoUrl": "http://localhost:8080/uploads/907c9688-08ec-4231-b3f1-e8382b9b766e.png", "createdAt": "2026-11-19T16:00:43.262+09:00" }
+```
+| HTTP | code | 언제 |
+| --- | --- | --- |
+| 400 | `EMPTY_REPORT` | 모든 칸이 비어 있고 사진도 없음 |
+| 400 | `BAD_REQUEST` | 글자 수 초과, 위도·경도 하나만, 범위 밖 좌표 |
+| 400 | `INVALID_PHOTO` | 사진이 아닌 파일 |
+| 404 | `PLACE_NOT_FOUND` / `LOT_NOT_FOUND` | 없는 목적지, 그 목적지에 없는 주차장 |
+| 413 | `PHOTO_TOO_LARGE` | 사진 5MB 초과 |
+| 429 | `TOO_MANY_REPORTS` | 같은 사람이 24시간 안에 10건 넘게 보냄 |
+
+**승인되면** 그 주차장의 `GET /places/{placeId}/parking` 응답이 이렇게 바뀝니다.
+
+| 응답 필드 | 바뀌는 값 |
+| --- | --- |
+| `lot.entranceGuide`, `lot.feeDescription`, `lot.hoursDescription` | 제보한 문구 |
+| `lot.entrancePhotoUrl` | 사진 절대 URL (`https://서버/uploads/…`) |
+| `lot.entranceCoordinates` + `lot.coordinateType` | 제보한 입구 좌표 + `"entrance"` |
+| `lot.verifiedAt` | 관리자가 승인한 시각 → 화면의 "확인 시점" |
+| `benefitDescription`, `validationInstructions`, `walkingSteps` | 제보한 값 |
+
+여러 제보가 승인되면 나중에 승인한 값이 이깁니다. 비운 칸은 원래 값(AI·공공데이터)이 그대로 남습니다.
 
 ---
 
@@ -442,6 +545,48 @@ LLM 응답이 **4–16초** 걸리므로 화면에 로딩 표시가 필요합니
 | 401 | `UNAUTHORIZED` | 키 없음·불일치 |
 | 409 | `IMPORT_UNAVAILABLE` | 주소 미설정, 파일을 받거나 읽지 못함 |
 
+`AI_CARDS_IMPORT_ON_STARTUP=true`면 서버가 켜질 때 카드가 하나도 없을 때만 자동으로 가져옵니다 (v1.4, 배포 첫 실행·H2용).
+
+### 정확도 피드백 집계 (v1.4)
+| Method | URL | 설명 |
+| --- | --- | --- |
+| GET | `/api/admin/feedback?placeId=&limit=100` | 주차장별 `accurate`·`inaccurate`·`total`·`lastAt`. 많이 받은 곳부터 |
+| GET | `/api/admin/feedback/comments?limit=50` | 의견이 적힌 최근 피드백 |
+
+### 주차 정보 제보 처리 (v1.4)
+| Method | URL | 설명 |
+| --- | --- | --- |
+| GET | `/api/admin/reports?status=pending&limit=100` | 제보 목록 (`pending`·`approved`·`rejected`, 빈 값이면 전체). 사진 URL·관리자 메모 포함. `autoApplies`가 `false`면 `lotId`가 없어 승인해도 자동 반영되지 않음 |
+| POST | `/api/admin/reports/{id}/approve` | 승인 → 응답에 바로 반영. 본문 선택 `{ "note": "현장 확인" }` |
+| POST | `/api/admin/reports/{id}/reject` | 반려 → 사진 파일 삭제. 본문 선택 `{ "note": "확인 불가" }` |
+
+| HTTP | code | 언제 |
+| --- | --- | --- |
+| 404 | `REPORT_NOT_FOUND` | 없는 제보 |
+| 409 | `ALREADY_REVIEWED` | 이미 승인·반려한 제보 |
+
+---
+
+## 5-1. 배포 설정 (v1.4)
+
+`Dockerfile`이 있어 Railway·Render 등에 레포를 연결하면 그대로 빌드됩니다.
+
+| 환경변수 | 예시 | 설명 |
+| --- | --- | --- |
+| `SPRING_PROFILES_ACTIVE` | `prod` | 운영 MySQL 설정 |
+| `PORT` | (플랫폼이 넣어 줌) | 기본 8080 |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD` | | MySQL 접속 정보. `DB_PORT` 기본 3306 |
+| `JPA_DDL_AUTO` | 첫 배포만 `update` | 빈 DB에 테이블을 만든다. 그 뒤에는 지우거나 `validate` |
+| `CORS_ALLOWED_ORIGINS` | `https://프론트주소` | 쉼표로 여러 개 |
+| `ADMIN_API_KEY` | (새로 만든 긴 값) | 관리자 API 키 |
+| `AI_CARDS_IMPORT_ON_STARTUP` | `true` | 첫 실행 때 AI 매장 데이터 자동 가져오기 |
+| `PUBLIC_DATA_SERVICE_KEY` | | 공공데이터 동기화 (매일 04:00) |
+| `AI_ASSISTANT_URL` | `https://AI서버주소` | 주차 비서 (없으면 503) |
+| `UPLOAD_DIR` | `/app/uploads` | 제보 사진 폴더. 플랫폼 디스크는 재배포 때 지워질 수 있어 볼륨 연결 권장 |
+| `PUBLIC_BASE_URL` | `https://백엔드주소` | 사진 URL 앞부분 (비우면 요청 주소로 만듦) |
+| `CLIENT_HASH_SALT` | (긴 무작위 값) | 피드백·제보 중복 판정용. 비우면 재시작마다 바뀜 |
+| `SWAGGER_ENABLED` | `false` | 운영에서 API 문서 숨기기 (기본 `true`) |
+
 ---
 
 ## 6. 프론트 초안에 대한 백엔드 결정 사항
@@ -463,16 +608,18 @@ LLM 응답이 **4–16초** 걸리므로 화면에 로딩 표시가 필요합니
 
 | 항목 | 내용 |
 | --- | --- |
-| 정확도 피드백 | `POST /parking-lots/{parkingLotId}/feedback` — 정확함/부정확함, 방문 목적지 ID, 중복·스팸 제한, 인증 정책 합의 후 구현 |
-| 외부 장소 검색 | 카카오 로컬 API 등으로 등록되지 않은 장소 검색 (ID 매핑 규칙 합의 필요) |
-| 목적지·주차장 직접 등록 API | 지금은 서버 코드(시연 데이터)로만 등록 가능. 도보 안내·혜택을 손으로 보강할 때 필요 |
-| 실제 보행 경로 | 도보 시간·동선 자동 계산 |
+| 외부 장소 검색 | 카카오 로컬 API 등으로 등록되지 않은 장소 검색 (카카오 API 키, ID 매핑 규칙 합의 필요) |
+| 새 목적지·새 주차장 추가 | 제보의 `lotId`를 비우면 접수는 되지만 자동 반영은 없음. 새 주차장을 만드는 관리자 기능 필요 |
+| 실제 보행 경로 | 보행자 경로 API 연동 (호출량·비용 확인 필요). 지금은 직선거리 추정(`estimatedWalkingMinutes`) |
 | 방문 예정 시각 기반 경고 | 시간대·자정·휴무 처리 합의 필요 |
-| 입구 사진 | 사진 저장소·공개 URL 정책 |
+| 사진 외부 저장소 | 지금은 서버 디스크(`UPLOAD_DIR`). 운영에서는 S3 등으로 옮기는 것을 권장 |
+| 관리자 화면 | 제보 승인·피드백 집계는 지금 Swagger로 처리. 전용 화면은 미정 |
 
 ---
 
 변경 이력
+- v1.4 (2026-11-19): 정확도 피드백 `POST /places/{placeId}/parking/{lotId}/feedback`, 주차 정보 제보 `POST /places/{placeId}/reports`(사진 포함) + 관리자 승인·반려, 승인 내용 응답 반영, 배포 설정(`PORT`, `CORS_ALLOWED_ORIGINS`, `JPA_DDL_AUTO`, Dockerfile, AI 데이터 자동 가져오기)
+- v1.3 (2026-11-19): 디자인 도보 안내 화면 대응. `PlaceParkingOption`에 선택 필드 `distanceMeters`, `estimatedWalkingMinutes` 추가 (기존 필드·시연 응답 변경 없음). 기존 DB는 `import-cards`를 다시 실행해야 반영
 - v1.2 (2026-11-19): AI 주차 비서 중계 `POST /assistant/chat`
 - v1.1 (2026-11-17): AI 파트 매장 데이터(약 3만9천 곳) 검색·상세 연결, 검색 `limit`, 주차장 `coordinateType`, AI 데이터 가져오기 관리자 API
 - v1.0 (2026-11-16): 구현 기준 최종 명세. 실제 서버 응답 예시, 오류 코드, 결정 사항, 미구현 항목 정리

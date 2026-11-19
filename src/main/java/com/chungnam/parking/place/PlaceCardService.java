@@ -35,7 +35,8 @@ import java.util.zip.GZIPInputStream;
  * - 입구 좌표가 없는 건물 주차장: 매장 좌표를 넣고 coordinateType=representative
  * - 입구 좌표 출처가 "OSM 주차장 입구 표시"일 때만 coordinateType=entrance (추정·미확인은 representative)
  * - 주소 null → "" / verifiedAt → null (공공데이터 기준일은 팀이 확인한 시각이 아니다)
- * - 직선거리로 추정한 도보 시간 → null (등록값만 쓴다는 계약)
+ * - 직선거리로 추정한 도보 시간 → walkingMinutes 는 null (등록값만 쓴다는 계약), 추정값은 estimatedWalkingMinutes 로
+ * - 직선거리 distanceMeters 는 그대로 (v1.2 선택 필드)
  * 계약 형식으로 읽히지 않는 행은 건너뛰고 개수만 센다.
  */
 @Slf4j
@@ -158,8 +159,17 @@ public class PlaceCardService {
                     lot.put("address", "");
                 }
                 lot.putNull("verifiedAt");
+                // 직선거리 추정 도보 시간은 walkingMinutes(확인된 값)에서 빼고 estimatedWalkingMinutes 로 옮긴다
                 if (o.path("walkingMinutesIsEstimate").asBoolean(false)) {
+                    JsonNode minutes = o.get("walkingMinutes");
+                    if (minutes != null && minutes.isNumber() && minutes.asInt() >= 0) {
+                        o.put("estimatedWalkingMinutes", minutes.asInt());
+                    }
                     o.putNull("walkingMinutes");
+                }
+                // 직선거리(m)는 그대로 내보낸다. 숫자가 아니면 버린다
+                if (o.has("distanceMeters") && !(o.get("distanceMeters").isNumber() && o.get("distanceMeters").asInt() >= 0)) {
+                    o.remove("distanceMeters");
                 }
             }
         }

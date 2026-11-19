@@ -120,6 +120,9 @@ class PlaceApiTest {
                 .andExpect(jsonPath("$.alternatives[*].lot.coordinateType", everyItem(is("representative"))))
                 // 모르는 값은 null / [] 로 (필드 자체는 존재)
                 .andExpect(jsonPath("$.alternatives[0].walkingMinutes").value(nullValue()))
+                // 직선거리(약 50m)와 추정 도보 시간은 선택 필드로
+                .andExpect(jsonPath("$.alternatives[0].distanceMeters", allOf(greaterThan(40), lessThan(60))))
+                .andExpect(jsonPath("$.alternatives[0].estimatedWalkingMinutes").value(1))
                 .andExpect(jsonPath("$.alternatives[0].benefitDescription").value(nullValue()))
                 .andExpect(jsonPath("$.alternatives[0].lot.verifiedAt").value(nullValue()))
                 .andExpect(jsonPath("$.alternatives[0].walkingSteps").isEmpty())

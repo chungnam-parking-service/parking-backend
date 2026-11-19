@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.time.Clock;
@@ -24,6 +25,18 @@ public class AppConfig implements WebMvcConfigurer {
         registry.addInterceptor(new AdminKeyInterceptor(adminApiKey)).addPathPatterns("/api/admin/**");
     }
 
+    @Value("${uploads.dir:uploads}")
+    private String uploadsDir;
+
+    /** 승인 전·후 제보 사진을 GET /uploads/{무작위 파일명} 으로 내보낸다 (파일명은 서버가 만든 UUID) */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String location = java.nio.file.Path.of(uploadsDir).toAbsolutePath().normalize().toUri().toString();
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations(location.endsWith("/") ? location : location + "/")
+                .setCachePeriod(86_400);
+    }
+
     /** 운영시간 판단 등에 사용 (테스트에서 고정 시각으로 교체 가능) */
     @Bean
     public Clock clock() {
@@ -38,9 +51,10 @@ public class AppConfig implements WebMvcConfigurer {
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .maxAge(3600);
         // 프론트 API.md 계약 경로 (/api 접두사 없음)
+        // GET: 검색·상세 / POST: 정확도 피드백, 주차 정보 제보
         registry.addMapping("/places/**")
                 .allowedOrigins(allowedOrigins)
-                .allowedMethods("GET", "OPTIONS")
+                .allowedMethods("GET", "POST", "OPTIONS")
                 .maxAge(3600);
         registry.addMapping("/assistant/**")
                 .allowedOrigins(allowedOrigins)

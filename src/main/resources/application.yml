@@ -11,8 +11,14 @@ spring:
         format_sql: true
         default_batch_fetch_size: 100
 
+  servlet:
+    multipart:
+      max-file-size: 5MB      # 입구 사진 한 장
+      max-request-size: 6MB
+
 server:
-  port: 8080
+  port: ${PORT:8080}           # 배포 플랫폼(Railway·Render 등)이 PORT 로 포트를 정해 준다
+  forward-headers-strategy: framework   # HTTPS 프록시 뒤에서 사진 URL 을 https 로 만들기 위해
 
 # 공공데이터포털 "전국주차장정보표준데이터" OpenAPI
 # https://www.data.go.kr/data/15012896/standard.do 에서 활용신청 후 인증키(Decoding)를 넣으세요.
@@ -26,7 +32,8 @@ public-data:
     sync-enabled: false
 
 cors:
-  allowed-origins: http://localhost:3000,http://localhost:5173
+  # 배포 시 프론트 주소를 쉼표로 이어서 넣는다. 예) https://ipgu.netlify.app,http://localhost:5173
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
 
 springdoc:
   swagger-ui:
@@ -38,6 +45,12 @@ springdoc:
 # AI 파트 매장 주차 데이터. POST /api/admin/places/import-cards 로 가져온다 (https 또는 file 주소, .gz 가능)
 ai-cards:
   url: ${AI_CARDS_URL:https://github.com/chungnam-parking-service/AI/releases/download/data-2026-11-17/place_parking_cn.jsonl.gz}
+  # true 면 서버 시작 후 카드가 하나도 없을 때만 자동으로 가져온다 (배포 첫 실행, H2 재시작용)
+  import-on-startup: ${AI_CARDS_IMPORT_ON_STARTUP:false}
+
+# 주차 정보 제보 사진 저장 위치 (GET /uploads/** 로 공개). 배포 플랫폼은 재배포 때 지워질 수 있다
+uploads:
+  dir: ${UPLOAD_DIR:uploads}
 
 # AI 파트 주차 비서 서버(AI 레포 server/app.py). 비우면 POST /assistant/chat 이 503
 ai-assistant:
@@ -96,15 +109,22 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/${DB_NAME:chungnam_parking}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:chungnam_parking}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
   jpa:
     hibernate:
-      ddl-auto: validate
+      # 빈 운영 DB 첫 배포는 JPA_DDL_AUTO=update 로 한 번 띄워 테이블을 만든 뒤 validate 로 돌린다
+      ddl-auto: ${JPA_DDL_AUTO:validate}
   sql:
     init:
       mode: never
+
+springdoc:
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}   # 운영에서 문서를 숨기려면 false
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
 
 public-data:
   parking:
