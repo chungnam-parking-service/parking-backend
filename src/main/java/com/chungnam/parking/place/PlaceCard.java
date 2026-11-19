@@ -35,7 +35,11 @@ public class PlaceCard {
     @Column(name = "status_rank", nullable = false)
     private int statusRank;
 
+    /**
+     * 길이를 주지 않으면 MySQL(ddl-auto: update)에서 tinytext(255바이트)로 만들어져 가져오기가 실패한다.
+     * 16MB 를 넘는 길이를 주면 LONGTEXT 가 된다 (db/place_card.sql 과 같음).
+     */
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, length = Integer.MAX_VALUE)
     private String payload;
 }

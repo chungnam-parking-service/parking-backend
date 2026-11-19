@@ -24,6 +24,18 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "PLACE_NOT_FOUND", "목적지를 찾을 수 없습니다.");
     }
 
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<ErrorResponse> handleApi(ApiException e) {
+        return error(e.status(), e.code(), e.getMessage());
+    }
+
+    /** 제보 사진이 spring.servlet.multipart.max-file-size(5MB)를 넘음 */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleTooLarge(org.springframework.web.multipart.MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(413)
+                .body(ErrorResponse.of(413, "PHOTO_TOO_LARGE", "사진은 5MB 이하로 올려 주세요."));
+    }
+
     @ExceptionHandler(AssistantUnavailableException.class)
     public ResponseEntity<ErrorResponse> handleAssistantUnavailable(AssistantUnavailableException e) {
         return error(HttpStatus.SERVICE_UNAVAILABLE, e.code(), e.getMessage());

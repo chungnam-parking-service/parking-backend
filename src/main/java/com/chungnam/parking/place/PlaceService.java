@@ -24,6 +24,8 @@ public class PlaceService {
     public static final int MAX_SEARCH_LIMIT = 50;
     static final int NEARBY_RADIUS_METERS = 1000;
     static final int NEARBY_LIMIT = 10;
+    private static final double WALKING_DETOUR_FACTOR = 1.3;
+    private static final double WALKING_METERS_PER_MINUTE = 75d;
     private static final double METERS_PER_DEGREE_LAT = 111_320d;
     private static final ZoneOffset SEOUL = ZoneOffset.ofHours(9);
 
@@ -31,6 +33,7 @@ public class PlaceService {
     private final PlaceParkingLinkRepository linkRepository;
     private final ParkingLotRepository parkingLotRepository;
     private final PlaceCardService cardService;
+    private final com.chungnam.parking.report.ReportOverlay reportOverlay;
 
     /**
      * GET /places?query=&limit=
@@ -58,6 +61,11 @@ public class PlaceService {
 
     /** GET /places/{placeId}/parking. 직접 등록한 목적지가 없으면 AI 파트 매장 카드에서 찾는다. */
     public PlaceParkingResponse getParking(String placeId) {
+        // 승인된 사용자 제보(입구 사진·안내·요금 등)를 마지막에 덧씌운다
+        return reportOverlay.apply(buildParking(placeId));
+    }
+
+    private PlaceParkingResponse buildParking(String placeId) {
         Place place = placeRepository.findById(placeId).orElse(null);
         if (place == null) {
             return cardService.find(placeId).orElseThrow(() -> new PlaceNotFoundException(placeId));
@@ -79,9 +87,10 @@ public class PlaceService {
         if (place.isIncludePublicNearby()) {
             Set<Long> linkedLotIds = links.stream().map(l -> l.getParkingLot().getId()).collect(Collectors.toSet());
             publicNearby(place).stream()
-                    .filter(lot -> !linkedLotIds.contains(lot.getId()))
-                    .map(lot -> new PlaceParkingOption(toLotDto(lot), ParkingRelationship.NEARBY.value(),
-                            null, null, null, List.of()))
+                    .filter(n -> !linkedLotIds.contains(n.lot().getId()))
+                    .map(n -> new PlaceParkingOption(toLotDto(n.lot()), ParkingRelationship.NEARBY.value(),
+                            null, null, null, List.of(),
+                            (int) Math.round(n.meters()), estimateWalkingMinutes(n.meters())))
                     .forEach(alternatives::add);
         }
 
@@ -98,8 +107,34 @@ public class PlaceService {
                 place.isDemo());
     }
 
+    /** 주변 주차장과 목적지까지 직선거리(m) */
+    private record NearbyLot(ParkingLot lot, double meters) {
+    }
+
+    /**
+     * 직선거리로 도보 시간을 추정한다. AI 파트와 같은 식: 직선거리 × 1.3(실제 길 보정) ÷ 75m/분, 반올림, 최소 1분.
+     * 실제 경로가 아니므로 walkingMinutes 가 아니라 estimatedWalkingMinutes 로만 내보낸다.
+     */
+    static int estimateWalkingMinutes(double meters) {
+        return (int) Math.max(1, Math.round(meters * WALKING_DETOUR_FACTOR / WALKING_METERS_PER_MINUTE));
+    }
+
+    /**
+     * 목적지 주차 응답에 그 주차장(lotId)이 있는지 확인한다. 피드백·제보가 화면에 보이는 주차장에만 붙도록.
+     * 목적지가 없으면 404 PLACE_NOT_FOUND, 주차장이 없으면 404 LOT_NOT_FOUND.
+     */
+    public void requireLot(String placeId, String lotId) {
+        PlaceParkingResponse parking = getParking(placeId);
+        boolean found = java.util.stream.Stream.concat(parking.primaryParking().stream(), parking.alternatives().stream())
+                .anyMatch(o -> o.lot().id().equals(lotId));
+        if (!found) {
+            throw new com.chungnam.parking.common.ApiException(org.springframework.http.HttpStatus.NOT_FOUND,
+                    "LOT_NOT_FOUND", "이 목적지에 없는 주차장입니다.");
+        }
+    }
+
     /** 목적지 좌표 기준 반경 내 공공데이터 주차장 (가까운 순) */
-    private List<ParkingLot> publicNearby(Place place) {
+    private List<NearbyLot> publicNearby(Place place) {
         double lat = place.getLatitude();
         double lng = place.getLongitude();
         double dLat = NEARBY_RADIUS_METERS / METERS_PER_DEGREE_LAT;
@@ -112,9 +147,9 @@ public class PlaceService {
                 .stream().collect(Collectors.toMap(ParkingLot::getId, Function.identity()));
 
         return rows.stream()
-                .map(r -> byId.get(r.getId()))
-                .filter(Objects::nonNull)
-                .filter(lot -> lot.getLatitude() != null && lot.getLongitude() != null) // 입구 좌표 필수
+                .filter(r -> byId.containsKey(r.getId()))
+                .map(r -> new NearbyLot(byId.get(r.getId()), r.getDistance()))
+                .filter(n -> n.lot().getLatitude() != null && n.lot().getLongitude() != null) // 입구 좌표 필수
                 .toList();
     }
 
