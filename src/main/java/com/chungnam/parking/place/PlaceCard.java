@@ -11,7 +11,9 @@ import lombok.NoArgsConstructor;
  * 나머지 칸은 검색용이다. 행은 PlaceCardService.importFrom 이 통째로 교체한다.
  */
 @Entity
-@Table(name = "place_card")
+// 검색은 이 인덱스만 읽고(payload 를 읽지 않음) ID 를 고른다. 없으면 MySQL 이 검색마다 테이블 전체(약 130MB)를 읽는다.
+@Table(name = "place_card",
+        indexes = @Index(name = "idx_place_card_search", columnList = "name_key, category_key, address, status_rank"))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PlaceCard {

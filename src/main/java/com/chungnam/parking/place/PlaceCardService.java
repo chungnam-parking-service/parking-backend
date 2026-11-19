@@ -25,7 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -128,8 +132,15 @@ public class PlaceCardService {
             return new CardSearch(0, List.of());
         }
         long total = repository.countSearch(region, q);
-        List<PlaceDto> items = total == 0 ? List.of()
-                : repository.search(region, q, Limit.of(limit)).stream().map(c -> read(c).place()).toList();
+        if (total == 0) {
+            return new CardSearch(0, List.of());
+        }
+        // 인덱스로 ID 만 고른 뒤, 큰 payload 는 고른 limit 건만 읽는다
+        List<String> ids = repository.searchIds(region, q, Limit.of(limit));
+        Map<String, PlaceCard> byId = repository.findAllById(ids).stream()
+                .collect(Collectors.toMap(PlaceCard::getId, Function.identity()));
+        List<PlaceDto> items = ids.stream().map(byId::get).filter(Objects::nonNull)
+                .map(c -> read(c).place()).toList();
         return new CardSearch(total, items);
     }
 

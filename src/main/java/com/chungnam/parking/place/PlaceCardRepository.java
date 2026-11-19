@@ -14,11 +14,11 @@ public interface PlaceCardRepository extends JpaRepository<PlaceCard, String> {
             + " and (:q = '' or c.nameKey like concat('%', :q, '%') or c.categoryKey like concat('%', :q, '%'))";
 
     /** 매장명 완전 일치 → 앞부분 일치 → 포함 → 업종 일치 순, 같으면 주차 정보가 확인된 곳·짧은 이름 먼저 */
-    @Query("select c from PlaceCard c" + WHERE + " order by"
+    @Query("select c.id from PlaceCard c" + WHERE + " order by"
             + " case when c.nameKey = :q then 0 when c.nameKey like concat(:q, '%') then 1"
             + " when c.nameKey like concat('%', :q, '%') then 2 else 3 end,"
             + " c.statusRank, length(c.nameKey), c.id")
-    List<PlaceCard> search(@Param("region") String region, @Param("q") String q, Limit limit);
+    List<String> searchIds(@Param("region") String region, @Param("q") String q, Limit limit);
 
     @Query("select count(c) from PlaceCard c" + WHERE)
     long countSearch(@Param("region") String region, @Param("q") String q);
