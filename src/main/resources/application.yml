@@ -39,6 +39,11 @@ springdoc:
 ai-cards:
   url: ${AI_CARDS_URL:https://github.com/chungnam-parking-service/AI/releases/download/data-2026-11-17/place_parking_cn.jsonl.gz}
 
+# AI 파트 주차 비서 서버(AI 레포 server/app.py). 비우면 POST /assistant/chat 이 503
+ai-assistant:
+  url: ${AI_ASSISTANT_URL:}
+  read-timeout-ms: 60000
+
 # POST /api/admin/sync 호출 시 X-Admin-Key 헤더 값
 admin:
   api-key: ${ADMIN_API_KEY:}

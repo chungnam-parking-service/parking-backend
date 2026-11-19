@@ -42,5 +42,9 @@ public class AppConfig implements WebMvcConfigurer {
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods("GET", "OPTIONS")
                 .maxAge(3600);
+        registry.addMapping("/assistant/**")
+                .allowedOrigins(allowedOrigins)
+                .allowedMethods("POST", "OPTIONS")
+                .maxAge(3600);
     }
 }
