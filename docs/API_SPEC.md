@@ -1,4 +1,4 @@
-# 충남 주차 안내 백엔드 API 명세서 v1.1
+# 충남 주차 안내 백엔드 API 명세서 v1.2
 
 프론트 [`docs/API.md` 주차 안내 API 초안 v0.1]을 기준으로 **실제 구현된 백엔드 API만** 정리한 최종 명세입니다.
 목적지 API는 프론트 초안의 경로·필드·null 규칙을 그대로 따르며, 응답 타입은 프론트 `src/domain/parking.ts`와 1:1로 대응합니다.
@@ -7,6 +7,7 @@
 | 그룹 | 경로 | 사용처 |
 | --- | --- | --- |
 | **목적지 (프론트 API.md 계약)** | `GET /places`, `GET /places/{placeId}/parking` | 프론트 검색·상세 화면 |
+| 주차 비서 (AI 중계) | `POST /assistant/chat` | 자연어 주차 질문 화면 |
 | 주차장 조회 | `GET /api/parking-lots…`, `GET /api/regions` | 지도·주차장 목록 등 보조 화면 (선택) |
 | 관리자 | `POST /api/admin/sync`, `POST /api/admin/places/import-cards` | 백엔드 데이터 관리 전용 |
 
@@ -33,7 +34,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 
 ### CORS
 허용 출처: `http://localhost:5173`(Vite), `http://localhost:3000`. 배포 출처는 정해지면 추가합니다.
-허용 메서드: `/places/**` GET, `/api/**` GET·POST.
+허용 메서드: `/places/**` GET, `/assistant/**` POST, `/api/**` GET·POST.
 
 ### 오류 body
 ```json
@@ -279,6 +280,48 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 
 ---
 
+## 2-2. 주차 비서 `POST /assistant/chat`
+
+질문을 AI 파트 주차 비서 서버(`AI_ASSISTANT_URL`, AI 레포 `server/app.py`)로 넘기고 답을 그대로 돌려줍니다.
+비서는 같은 AI 매장 데이터를 도구로 검색해 답하고, 데이터에 없는 것(주차권 처리·할인 조건·실시간 빈자리)은 매장 확인을 안내합니다.
+LLM 응답이 **4–16초** 걸리므로 화면에 로딩 표시가 필요합니다. 백엔드 읽기 타임아웃은 60초(`ai-assistant.read-timeout-ms`).
+
+요청
+```json
+{
+  "message": "천안 직산 배나무숲 주차 돼요?",
+  "history": [
+    { "role": "user", "content": "천안 배나무숲 주차 어때요?" },
+    { "role": "assistant", "content": "천안에 '배나무숲'이 2곳 있어요. 어느 곳인가요? …" }
+  ]
+}
+```
+- `message`: 1–500자, 필수. `history`: 이전 대화 최대 10개(`role`은 `user`|`assistant`, `content` 4000자 이하), 생략 가능.
+- 같은 이름 매장이 여러 곳이면 비서가 지점을 되묻습니다. 이어서 물을 때 이전 대화를 `history`로 보내 주세요.
+
+200
+```json
+{
+  "answer": "천안 직산읍 상덕로 137 배나무숲(카페)은 매장 전용 주차장이 있고 무료입니다. …",
+  "toolCalls": [
+    { "name": "search_places", "args": { "query": "배나무숲", "region": "천안" } },
+    { "name": "get_parking", "args": { "place_id": "sangga-MA010120220808573659" } }
+  ],
+  "model": "nvidia/nemotron-3-ultra-550b-a55b:free"
+}
+```
+- `answer`는 굵게(`**…**`)·목록 같은 마크다운이 섞일 수 있습니다.
+- `toolCalls`는 디버그용입니다. `get_parking`의 `place_id`는 `/places/{placeId}/parking`의 ID와 같습니다.
+
+오류
+| HTTP | code | 의미 |
+| --- | --- | --- |
+| 400 | `BAD_REQUEST` | 빈 질문, 500자 초과, 잘못된 `role` |
+| 503 | `ASSISTANT_UNAVAILABLE` | `AI_ASSISTANT_URL` 미설정 |
+| 503 | `ASSISTANT_FAILED` | AI 서버 오류·타임아웃 |
+
+---
+
 ## 3. 오류와 네트워크 (프론트 초안 대응)
 
 | HTTP | 백엔드 code | 의미 | 화면 동작 (프론트 초안) |
@@ -290,7 +333,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 | 500 | `INTERNAL_ERROR` | 서버 오류 | 오류와 재시도 |
 | 네트워크 실패 | - | 서버 꺼짐·CORS 차단 | 오류와 재시도 |
 
-429·503은 현재 백엔드가 보내지 않습니다.
+503은 `/assistant/chat`(주차 비서)만 보냅니다(`ASSISTANT_UNAVAILABLE`, `ASSISTANT_FAILED`). 429는 보내지 않습니다.
 
 ---
 
@@ -430,6 +473,7 @@ API 문서·테스트 화면: `http://localhost:8080/swagger-ui.html`
 ---
 
 변경 이력
+- v1.2 (2026-11-19): AI 주차 비서 중계 `POST /assistant/chat`
 - v1.1 (2026-11-17): AI 파트 매장 데이터(약 3만9천 곳) 검색·상세 연결, 검색 `limit`, 주차장 `coordinateType`, AI 데이터 가져오기 관리자 API
 - v1.0 (2026-11-16): 구현 기준 최종 명세. 실제 서버 응답 예시, 오류 코드, 결정 사항, 미구현 항목 정리
 - v0.3: 목적지 API를 프론트 경로(`/places`) 그대로 구현

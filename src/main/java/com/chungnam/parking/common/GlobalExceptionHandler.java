@@ -1,6 +1,7 @@
 package com.chungnam.parking.common;
 
 import jakarta.validation.ConstraintViolationException;
+import com.chungnam.parking.assistant.AssistantUnavailableException;
 import com.chungnam.parking.place.PlaceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
@@ -21,6 +22,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PlaceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handlePlaceNotFound(PlaceNotFoundException e) {
         return error(HttpStatus.NOT_FOUND, "PLACE_NOT_FOUND", "목적지를 찾을 수 없습니다.");
+    }
+
+    @ExceptionHandler(AssistantUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleAssistantUnavailable(AssistantUnavailableException e) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, e.code(), e.getMessage());
     }
 
     @ExceptionHandler(UnauthorizedException.class)
