@@ -8,5 +8,6 @@ CREATE TABLE IF NOT EXISTS place_card (
   address      VARCHAR(300) NOT NULL,
   status_rank  INT          NOT NULL,
   payload      LONGTEXT     NOT NULL,
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  INDEX idx_place_card_search (name_key, category_key, address, status_rank)
 ) DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
